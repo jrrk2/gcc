@@ -955,6 +955,30 @@ rtx_equal_for_cselib_1 (rtx x, rtx y, machine_mode memmode)
 	 using this MEM's mode.  */
       return rtx_equal_for_cselib_1 (XEXP (x, 0), XEXP (y, 0), GET_MODE (x));
 
+    case XOR:
+      /* Catch cases in which we might recurse indefinitely because
+	 two XORs with the same value cancel out, yielding the
+	 original value.  In some circumstances, we might find
+	 ourselves attempting to expand one operand of both XORs and
+	 comparing again, which is just another way of commuting the
+	 compare, and if we were to then expand again, we'd be back at
+	 square one.  It's safe to compare for equality here, because
+	 if this is the case we're interested in, we'll have taken the
+	 rtxes from equivalence lists.  Besides, we couldn't use
+	 rtx_equal_for_cselib_1 instead: that might just turn a case
+	 in which the present call would yield an equality into an
+	 infinite recursion at this point!  */
+      if (XEXP (x, 0) == y)
+	return rtx_equal_for_cselib_1 (XEXP (x, 1), const0_rtx, GET_MODE (x));
+      else if (XEXP (x, 1) == y)
+	return rtx_equal_for_cselib_1 (XEXP (x, 0), const0_rtx, GET_MODE (x));
+      else if (XEXP (y, 0) == x)
+	return rtx_equal_for_cselib_1 (XEXP (y, 1), const0_rtx, GET_MODE (x));
+      else if (XEXP (y, 1) == x)
+	return rtx_equal_for_cselib_1 (XEXP (y, 0), const0_rtx, GET_MODE (x));
+      else
+	break;
+
     default:
       break;
     }
